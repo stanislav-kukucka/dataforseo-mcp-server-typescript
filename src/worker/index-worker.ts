@@ -101,19 +101,6 @@ function addCors(response: Response): Response {
   return r;
 }
 
-/**
- * Creates a JSON-RPC error response
- */
-function createErrorResponse(code: number, message: string): Response {
-  return new Response(JSON.stringify({
-    jsonrpc: "2.0",
-    error: { code, message },
-    id: null
-  }), {
-    status: code === -32001 ? 401 : 400,
-    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
-  });
-}
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -137,16 +124,6 @@ export default {
       }), {
         headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
       });
-    }
-
-    // Check if credentials are configured
-    const mcpPaths = ['/mcp', '/http', '/sse', '/messages', '/sse/message'];
-    if (mcpPaths.includes(url.pathname)) {
-      const user = env.DATAFORSEO_USERNAME as string;
-      const pass = env.DATAFORSEO_PASSWORD as string;
-      if (!user || !pass) {
-        return createErrorResponse(-32001, "DataForSEO credentials not configured in worker environment variables");
-      }
     }
 
     // MCP endpoints using McpAgent pattern
