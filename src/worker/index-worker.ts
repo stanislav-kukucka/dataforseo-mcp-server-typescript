@@ -142,9 +142,9 @@ export default {
     // Check if credentials are configured
     const mcpPaths = ['/mcp', '/http', '/sse', '/messages', '/sse/message'];
     if (mcpPaths.includes(url.pathname)) {
-      const user = env.DATAFORSEO_USERNAME;
-      const pass = env.DATAFORSEO_PASSWORD;
-      if (!user || user.trim() === '' || !pass || pass.trim() === '') {
+      const user = env.DATAFORSEO_USERNAME as string;
+      const pass = env.DATAFORSEO_PASSWORD as string;
+      if (!user || !pass) {
         return createErrorResponse(-32001, "DataForSEO credentials not configured in worker environment variables");
       }
     }
