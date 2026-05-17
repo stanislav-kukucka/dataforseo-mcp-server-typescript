@@ -9,9 +9,7 @@
   "vars": {
     "ENABLED_MODULES": null,
     "DATAFORSEO_FULL_RESPONSE": "false",
-    "DATAFORSEO_SIMPLE_FILTER": "true",
-    "DATAFORSEO_USERNAME": "",
-    "DATAFORSEO_PASSWORD": ""
+    "DATAFORSEO_SIMPLE_FILTER": "true"
   },
   	"durable_objects": {
 		"bindings": [
