@@ -88,6 +88,19 @@ export class DataForSEOMcpAgent extends McpAgent {
   }
 }
 
+const CORS_HEADERS: Record<string, string> = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, DELETE',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, Mcp-Session-Id',
+  'Access-Control-Expose-Headers': 'Mcp-Session-Id',
+};
+
+function addCors(response: Response): Response {
+  const r = new Response(response.body, response);
+  for (const [k, v] of Object.entries(CORS_HEADERS)) r.headers.set(k, v);
+  return r;
+}
+
 /**
  * Creates a JSON-RPC error response
  */
@@ -98,7 +111,7 @@ function createErrorResponse(code: number, message: string): Response {
     id: null
   }), {
     status: code === -32001 ? 401 : 400,
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
   });
 }
 
@@ -109,6 +122,11 @@ export default {
     // Store environment in global context for McpAgent access
     (globalThis as any).workerEnv = env;
 
+    // CORS preflight
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
+
     // Health check endpoint
     if (url.pathname === '/health' && request.method === 'GET') {
       return new Response(JSON.stringify({
@@ -117,24 +135,31 @@ export default {
         version: SERVER_VERSION,
         timestamp: new Date().toISOString()
       }), {
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
       });
     }
+
     // Check if credentials are configured
-    if (!env.DATAFORSEO_USERNAME || !env.DATAFORSEO_PASSWORD) {
-      if (['/mcp','/http', '/sse', '/messages','/sse/message'].includes(url.pathname)) {
+    const mcpPaths = ['/mcp', '/http', '/sse', '/messages', '/sse/message'];
+    if (mcpPaths.includes(url.pathname)) {
+      const user = env.DATAFORSEO_USERNAME;
+      const pass = env.DATAFORSEO_PASSWORD;
+      if (!user || user.trim() === '' || !pass || pass.trim() === '') {
         return createErrorResponse(-32001, "DataForSEO credentials not configured in worker environment variables");
       }
     }
+
     // MCP endpoints using McpAgent pattern
     if (url.pathname === "/sse" || url.pathname === "/sse/message") {
-      return DataForSEOMcpAgent.serveSSE("/sse").fetch(request, env, ctx);
+      const response = await DataForSEOMcpAgent.serveSSE("/sse").fetch(request, env, ctx);
+      return addCors(response);
     }
 
-    if (url.pathname === "/mcp" || url.pathname == '/http') {
-      return DataForSEOMcpAgent.serve("/mcp").fetch(request, env, ctx);
+    if (url.pathname === "/mcp" || url.pathname === '/http') {
+      const response = await DataForSEOMcpAgent.serve("/mcp").fetch(request, env, ctx);
+      return addCors(response);
     }
 
-    return new Response("Not found", { status: 404 });
+    return new Response("Not found", { status: 404, headers: CORS_HEADERS });
   },
 };
